@@ -42,14 +42,6 @@ app.get('/auth/callback', async (req, res) => {
 
     const user = userRes.data
 
-    // Montar URL do avatar
-    const avatarUrl = user.avatar
-      ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`
-      : `https://cdn.discordapp.com/embed/avatars/0.png`
-
-    // Pegar nickname (global_name é o apelido do Discord)
-    const nickname = user.global_name || user.username
-
     // Adicionar usuário ao servidor automaticamente
     await axios.put(
       `https://discord.com/api/guilds/${GUILD_ID}/members/${user.id}`,
@@ -57,10 +49,8 @@ app.get('/auth/callback', async (req, res) => {
       { headers: { Authorization: `Bot ${BOT_TOKEN}`, 'Content-Type': 'application/json' } }
     )
 
-    // Redireciona pro site com todos os dados
-    res.redirect(
-      `${process.env.SITE_URL}/sucesso?userId=${user.id}&username=${encodeURIComponent(user.username)}&avatar=${encodeURIComponent(avatarUrl)}&nickname=${encodeURIComponent(nickname)}`
-    )
+    // Redireciona de volta pro site com os dados do usuário
+    res.redirect(`https://cerberusshop.lovable.app/sucesso?userId=${user.id}&username=${encodeURIComponent(user.username)}`)
 
   } catch (err) {
     console.error(err.response?.data || err.message)
