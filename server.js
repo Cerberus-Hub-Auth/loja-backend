@@ -50,7 +50,7 @@ app.get('/auth/callback', async (req, res) => {
     )
 
     // Redireciona de volta pro site com os dados do usuário
-    res.redirect(`https://seusite.lovable.app/sucesso?userId=${user.id}&username=${encodeURIComponent(user.username)}`)
+    res.redirect(`https://cerberusshop.lovable.app/sucesso?userId=${user.id}&username=${encodeURIComponent(user.username)}`)
 
   } catch (err) {
     console.error(err.response?.data || err.message)
