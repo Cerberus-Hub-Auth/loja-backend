@@ -2,15 +2,97 @@ require('dotenv').config()
 const express = require('express')
 const axios = require('axios')
 const cors = require('cors')
-const app = express()
+const http = require('http')
+const { Server } = require('socket.io')
+const { Pool } = require('pg')
+const cloudinary = require('cloudinary').v2
+const multer = require('multer')
+const { createClient } = require('@supabase/supabase-js')
 
+const app = express()
 app.use(cors())
 app.use(express.json())
 
 const {
   CLIENT_ID, CLIENT_SECRET, BOT_TOKEN,
-  GUILD_ID, SALES_CHANNEL_ID, REDIRECT_URI
+  GUILD_ID, SALES_CHANNEL_ID, REDIRECT_URI, SITE_URL,
+  DATABASE_URL, CLOUDINARY_NAME, CLOUDINARY_KEY, CLOUDINARY_SECRET
 } = process.env
+
+// Supabase
+const supabase = createClient(
+  'https://fekltmaxsiibptpqpsxi.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZla2x0bWF4c2lpYnB0cHFwc3hpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwMjUyNzksImV4cCI6MjA5MTYwMTI3OX0.8hOnDzinM-zdC6GKWJtIiPtEjG9igGkl0YobQxzdigs'
+)
+
+// Banco de dados PostgreSQL
+const pool = new Pool({ connectionString: DATABASE_URL })
+
+// Criar tabela de mensagens se não existir
+pool.query(`
+  CREATE TABLE IF NOT EXISTS mensagens (
+    id SERIAL PRIMARY KEY,
+    user_id TEXT,
+    username TEXT,
+    avatar TEXT,
+    conteudo TEXT,
+    arquivo_url TEXT,
+    is_admin BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT NOW()
+  )
+`)
+
+// Cloudinary
+cloudinary.config({
+  cloud_name: CLOUDINARY_NAME,
+  api_key: CLOUDINARY_KEY,
+  api_secret: CLOUDINARY_SECRET
+})
+
+// Socket.io
+const server = http.createServer(app)
+const io = new Server(server, {
+  cors: { origin: '*' }
+})
+
+io.on('connection', (socket) => {
+  console.log('Usuario conectado:', socket.id)
+
+  socket.on('carregar_mensagens', async () => {
+    const result = await pool.query('SELECT * FROM mensagens ORDER BY created_at ASC')
+    socket.emit('mensagens_antigas', result.rows)
+  })
+
+  socket.on('nova_mensagem', async (dados) => {
+    const { userId, username, avatar, conteudo, isAdmin } = dados
+    const result = await pool.query(
+      'INSERT INTO mensagens (user_id, username, avatar, conteudo, is_admin) VALUES ($1,$2,$3,$4,$5) RETURNING *',
+      [userId, username, avatar, conteudo, isAdmin || false]
+    )
+    io.emit('mensagem_recebida', result.rows[0])
+  })
+
+  socket.on('disconnect', () => {
+    console.log('Usuario desconectado:', socket.id)
+  })
+})
+
+// Upload de arquivo
+const upload = multer({ storage: multer.memoryStorage() })
+
+app.post('/upload', upload.single('arquivo'), async (req, res) => {
+  try {
+    const result = await new Promise((resolve, reject) => {
+      cloudinary.uploader.upload_stream(
+        { resource_type: 'auto' },
+        (error, result) => error ? reject(error) : resolve(result)
+      ).end(req.file.buffer)
+    })
+    res.json({ url: result.secure_url })
+  } catch (err) {
+    res.status(500).json({ error: 'Erro no upload' })
+  }
+})
 
 // ==========================================
 // ROTA 1: Callback do login com Discord
@@ -20,7 +102,6 @@ app.get('/auth/callback', async (req, res) => {
   if (!code) return res.status(400).json({ error: 'Code não encontrado' })
 
   try {
-    // Trocar o code pelo access_token
     const tokenRes = await axios.post(
       'https://discord.com/api/oauth2/token',
       new URLSearchParams({
@@ -35,31 +116,35 @@ app.get('/auth/callback', async (req, res) => {
 
     const { access_token } = tokenRes.data
 
-    // Pegar perfil do usuário
     const userRes = await axios.get('https://discord.com/api/users/@me', {
       headers: { Authorization: `Bearer ${access_token}` }
     })
 
     const user = userRes.data
 
-    // Montar URL do avatar
     const avatarUrl = user.avatar
       ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png`
       : `https://cdn.discordapp.com/embed/avatars/0.png`
 
-    // Pegar nickname (global_name é o apelido do Discord)
     const nickname = user.global_name || user.username
 
-    // Adicionar usuário ao servidor automaticamente
+    // Salvar usuário no Supabase
+    await supabase.from('usuarios').upsert({
+      user_id: user.id,
+      username: user.username,
+      nickname: nickname,
+      avatar: avatarUrl
+    })
+
+    // Adicionar ao servidor Discord
     await axios.put(
       `https://discord.com/api/guilds/${GUILD_ID}/members/${user.id}`,
       { access_token },
       { headers: { Authorization: `Bot ${BOT_TOKEN}`, 'Content-Type': 'application/json' } }
     )
 
-    // Redireciona pro site com todos os dados
     res.redirect(
-      `${process.env.SITE_URL}/sucesso?userId=${user.id}&username=${encodeURIComponent(user.username)}&avatar=${encodeURIComponent(avatarUrl)}&nickname=${encodeURIComponent(nickname)}`
+      `${SITE_URL}/sucesso?userId=${user.id}&username=${encodeURIComponent(user.username)}&avatar=${encodeURIComponent(avatarUrl)}&nickname=${encodeURIComponent(nickname)}`
     )
 
   } catch (err) {
@@ -101,4 +186,4 @@ app.post('/venda-aprovada', async (req, res) => {
   }
 })
 
-app.listen(3000, () => console.log('✅ Backend rodando na porta 3000'))
+server.listen(3000, () => console.log('✅ Backend rodando na porta 3000'))
