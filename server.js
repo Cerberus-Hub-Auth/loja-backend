@@ -4,7 +4,6 @@ const axios = require('axios')
 const cors = require('cors')
 const http = require('http')
 const { Server } = require('socket.io')
-const { Pool } = require('pg')
 const cloudinary = require('cloudinary').v2
 const multer = require('multer')
 const { createClient } = require('@supabase/supabase-js')
@@ -16,7 +15,7 @@ app.use(express.json())
 const {
   CLIENT_ID, CLIENT_SECRET, BOT_TOKEN,
   GUILD_ID, SALES_CHANNEL_ID, REDIRECT_URI, SITE_URL,
-  DATABASE_URL, CLOUDINARY_NAME, CLOUDINARY_KEY, CLOUDINARY_SECRET
+  CLOUDINARY_NAME, CLOUDINARY_KEY, CLOUDINARY_SECRET
 } = process.env
 
 // Supabase
@@ -24,23 +23,6 @@ const supabase = createClient(
   'https://fekltmaxsiibptpqpsxi.supabase.co',
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZla2x0bWF4c2lpYnB0cHFwc3hpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwMjUyNzksImV4cCI6MjA5MTYwMTI3OX0.8hOnDzinM-zdC6GKWJtIiPtEjG9igGkl0YobQxzdigs'
 )
-
-// Banco de dados PostgreSQL
-const pool = new Pool({ connectionString: DATABASE_URL })
-
-// Criar tabela de mensagens se não existir
-pool.query(`
-  CREATE TABLE IF NOT EXISTS mensagens (
-    id SERIAL PRIMARY KEY,
-    user_id TEXT,
-    username TEXT,
-    avatar TEXT,
-    conteudo TEXT,
-    arquivo_url TEXT,
-    is_admin BOOLEAN DEFAULT FALSE,
-    created_at TIMESTAMP DEFAULT NOW()
-  )
-`)
 
 // Cloudinary
 cloudinary.config({
@@ -59,17 +41,21 @@ io.on('connection', (socket) => {
   console.log('Usuario conectado:', socket.id)
 
   socket.on('carregar_mensagens', async () => {
-    const result = await pool.query('SELECT * FROM mensagens ORDER BY created_at ASC')
-    socket.emit('mensagens_antigas', result.rows)
+    const { data } = await supabase
+      .from('mensagens')
+      .select('*')
+      .order('created_at', { ascending: true })
+    socket.emit('mensagens_antigas', data || [])
   })
 
   socket.on('nova_mensagem', async (dados) => {
     const { userId, username, avatar, conteudo, isAdmin } = dados
-    const result = await pool.query(
-      'INSERT INTO mensagens (user_id, username, avatar, conteudo, is_admin) VALUES ($1,$2,$3,$4,$5) RETURNING *',
-      [userId, username, avatar, conteudo, isAdmin || false]
-    )
-    io.emit('mensagem_recebida', result.rows[0])
+    const { data } = await supabase
+      .from('mensagens')
+      .insert([{ user_id: userId, username, avatar, conteudo, is_admin: isAdmin || false }])
+      .select()
+      .single()
+    io.emit('mensagem_recebida', data)
   })
 
   socket.on('disconnect', () => {
@@ -132,7 +118,7 @@ app.get('/auth/callback', async (req, res) => {
     await supabase.from('usuarios').upsert({
       user_id: user.id,
       username: user.username,
-      nickname: nickname,
+      nickname,
       avatar: avatarUrl
     })
 
