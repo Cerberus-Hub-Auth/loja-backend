@@ -31,20 +31,38 @@ cloudinary.config({
   api_secret: CLOUDINARY_SECRET
 })
 
-// Função de enviar embed no Discord
-async function enviarEmbed(embed) {
+// Cargos por produto
+const CARGOS = {
+  'Source Scripts': '1506395366352879698',
+  'Sources Bots': '1506395468555489350'
+}
+
+// Hora formatada BR
+function horaAtual() {
+  return new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })
+}
+
+// Enviar mensagem com Components V2
+async function enviarComponente(payload) {
   await axios.post(
     `https://discord.com/api/channels/${SALES_CHANNEL_ID}/messages`,
-    { embeds: [embed] },
+    payload,
+    { headers: { Authorization: `Bot ${BOT_TOKEN}`, 'Content-Type': 'application/json' } }
+  )
+}
+
+// Dar cargo ao usuário
+async function darCargo(userId, cargoId) {
+  await axios.put(
+    `https://discord.com/api/guilds/${GUILD_ID}/members/${userId}/roles/${cargoId}`,
+    {},
     { headers: { Authorization: `Bot ${BOT_TOKEN}`, 'Content-Type': 'application/json' } }
   )
 }
 
 // Socket.io
 const server = http.createServer(app)
-const io = new Server(server, {
-  cors: { origin: '*' }
-})
+const io = new Server(server, { cors: { origin: '*' } })
 
 io.on('connection', (socket) => {
   console.log('Usuario conectado:', socket.id)
@@ -150,30 +168,56 @@ app.get('/auth/callback', async (req, res) => {
 // ROTA 2: Venda aprovada
 // ==========================================
 app.post('/venda-aprovada', async (req, res) => {
-  const { userId, username, produto } = req.body
+  const { userId, username, produto, valor } = req.body
 
   if (!userId || !username || !produto) {
     return res.status(400).json({ error: 'Dados incompletos' })
   }
 
   try {
-    await enviarEmbed({
-      title: '✅ Venda Aprovada!',
-      color: 0x57F287,
-      fields: [
-        { name: '👤 Comprador', value: `<@${userId}>`, inline: true },
-        { name: '🏷️ Username', value: username, inline: true },
-        { name: '🛒 Produto', value: produto, inline: false },
-        { name: '🆔 User ID', value: `\`${userId}\``, inline: false },
-      ],
-      timestamp: new Date().toISOString(),
-      footer: { text: 'Sistema de Vendas' }
+    // Dar cargo se produto for Source Scripts ou Sources Bots
+    const cargoId = CARGOS[produto]
+    let cargoTexto = 'Nenhum cargo entregue'
+
+    if (cargoId) {
+      await darCargo(userId, cargoId)
+      cargoTexto = `<@&${cargoId}>`
+    }
+
+    await enviarComponente({
+      flags: 32768,
+      components: [
+        {
+          type: 17,
+          accent_color: 0xFF0000,
+          components: [
+            {
+              type: 10,
+              content: '## Nova Venda Aprovada!'
+            },
+            {
+              type: 14
+            },
+            {
+              type: 10,
+              content: `## <:Pessoas:1498405201844113524>・Usuário\n<@${userId}> (${username})\n## <:Carrinho:1498003085136756959>・Produto\n${produto}\n## <a:gears:1483654818819080362>・Cargo Entregue\n${cargoTexto}`
+            },
+            {
+              type: 14
+            },
+            {
+              type: 10,
+              content: `-# Sistema de Avisos | Cerberus Store | ${horaAtual()}`
+            }
+          ]
+        }
+      ]
     })
 
     res.json({ success: true })
   } catch (err) {
     console.error(err.response?.data || err.message)
-    res.status(500).json({ error: 'Erro ao enviar embed' })
+    res.status(500).json({ error: 'Erro ao enviar mensagem' })
   }
 })
 
@@ -181,29 +225,47 @@ app.post('/venda-aprovada', async (req, res) => {
 // ROTA 3: Chat criado
 // ==========================================
 app.post('/chat-criado', async (req, res) => {
-  const { userId, username } = req.body
+  const { userId, username, produto, valor } = req.body
 
   if (!userId || !username) {
     return res.status(400).json({ error: 'Dados incompletos' })
   }
 
   try {
-    await enviarEmbed({
-      title: '💬 Novo Chat Aberto!',
-      color: 0x5865F2,
-      fields: [
-        { name: '👤 Usuário', value: `<@${userId}>`, inline: true },
-        { name: '🏷️ Username', value: username, inline: true },
-        { name: '🆔 User ID', value: `\`${userId}\``, inline: false },
-      ],
-      timestamp: new Date().toISOString(),
-      footer: { text: 'Sistema de Suporte' }
+    await enviarComponente({
+      flags: 32768,
+      components: [
+        {
+          type: 17,
+          accent_color: 0xFF0000,
+          components: [
+            {
+              type: 10,
+              content: '## Novo Carrinho Aberto!'
+            },
+            {
+              type: 14
+            },
+            {
+              type: 10,
+              content: `## <:Pessoas:1498405201844113524>・Usuário\n<@${userId}> (${username})\n## <:Carrinho:1498003085136756959>・Produto\n${produto || 'Não informado'}\n## <a:Flyingmoney:1498405926791675914>・Valor Pago\n${valor || 'Não informado'}`
+            },
+            {
+              type: 14
+            },
+            {
+              type: 10,
+              content: `-# Sistema de Avisos | Cerberus Store | ${horaAtual()}`
+            }
+          ]
+        }
+      ]
     })
 
     res.json({ success: true })
   } catch (err) {
     console.error(err.response?.data || err.message)
-    res.status(500).json({ error: 'Erro ao enviar embed' })
+    res.status(500).json({ error: 'Erro ao enviar mensagem' })
   }
 })
 
@@ -211,29 +273,47 @@ app.post('/chat-criado', async (req, res) => {
 // ROTA 4: Chat deletado
 // ==========================================
 app.post('/chat-deletado', async (req, res) => {
-  const { userId, username } = req.body
+  const { userId, username, produto } = req.body
 
   if (!userId || !username) {
     return res.status(400).json({ error: 'Dados incompletos' })
   }
 
   try {
-    await enviarEmbed({
-      title: '🗑️ Chat Encerrado!',
-      color: 0xED4245,
-      fields: [
-        { name: '👤 Usuário', value: `<@${userId}>`, inline: true },
-        { name: '🏷️ Username', value: username, inline: true },
-        { name: '🆔 User ID', value: `\`${userId}\``, inline: false },
-      ],
-      timestamp: new Date().toISOString(),
-      footer: { text: 'Sistema de Suporte' }
+    await enviarComponente({
+      flags: 32768,
+      components: [
+        {
+          type: 17,
+          accent_color: 0xFF0000,
+          components: [
+            {
+              type: 10,
+              content: '## Carrinho Fechado!'
+            },
+            {
+              type: 14
+            },
+            {
+              type: 10,
+              content: `## <:Pessoas:1498405201844113524>・Usuário\n<@${userId}> (${username})\n## <:Carrinho:1498003085136756959>・Produto\n${produto || 'Não informado'}`
+            },
+            {
+              type: 14
+            },
+            {
+              type: 10,
+              content: `-# Sistema de Avisos | Cerberus Store | ${horaAtual()}`
+            }
+          ]
+        }
+      ]
     })
 
     res.json({ success: true })
   } catch (err) {
     console.error(err.response?.data || err.message)
-    res.status(500).json({ error: 'Erro ao enviar embed' })
+    res.status(500).json({ error: 'Erro ao enviar mensagem' })
   }
 })
 
