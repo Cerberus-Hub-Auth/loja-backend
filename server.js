@@ -248,7 +248,7 @@ app.post('/chat-criado', async (req, res) => {
             },
             {
               type: 10,
-              content: `## <:Pessoas:1498405201844113524>・Usuário\n<@${userId}> (${username})\n## <:Carrinho:1498003085136756959>・Produto\n${produto || 'Não informado'}\n## <a:Flyingmoney:1498405926791675914>・Valor Pago\n${valor || 'Não informado'}`
+              content: `## <:Pessoas:1498405201844113524>・Usuário\n<@${userId}> (${username})\n## <:Carrinho:1498003085136756959>・Produto\n${produto || 'Não informado'}\n## <a:Flyingmoney:1498405926791675914>・Valor\n${valor || 'Não informado'}`
             },
             {
               type: 14
