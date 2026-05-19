@@ -31,6 +31,15 @@ cloudinary.config({
   api_secret: CLOUDINARY_SECRET
 })
 
+// Função de enviar embed no Discord
+async function enviarEmbed(embed) {
+  await axios.post(
+    `https://discord.com/api/channels/${SALES_CHANNEL_ID}/messages`,
+    { embeds: [embed] },
+    { headers: { Authorization: `Bot ${BOT_TOKEN}`, 'Content-Type': 'application/json' } }
+  )
+}
+
 // Socket.io
 const server = http.createServer(app)
 const io = new Server(server, {
@@ -114,7 +123,6 @@ app.get('/auth/callback', async (req, res) => {
 
     const nickname = user.global_name || user.username
 
-    // Salvar usuário no Supabase
     await supabase.from('usuarios').upsert({
       user_id: user.id,
       username: user.username,
@@ -122,7 +130,6 @@ app.get('/auth/callback', async (req, res) => {
       avatar: avatarUrl
     })
 
-    // Adicionar ao servidor Discord
     await axios.put(
       `https://discord.com/api/guilds/${GUILD_ID}/members/${user.id}`,
       { access_token },
@@ -140,30 +147,88 @@ app.get('/auth/callback', async (req, res) => {
 })
 
 // ==========================================
-// ROTA 2: Venda aprovada → envia embed
+// ROTA 2: Venda aprovada
 // ==========================================
 app.post('/venda-aprovada', async (req, res) => {
   const { userId, username, produto } = req.body
 
+  if (!userId || !username || !produto) {
+    return res.status(400).json({ error: 'Dados incompletos' })
+  }
+
   try {
-    await axios.post(
-      `https://discord.com/api/channels/${SALES_CHANNEL_ID}/messages`,
-      {
-        embeds: [{
-          title: '✅ Venda Aprovada!',
-          color: 0x57F287,
-          fields: [
-            { name: '👤 Comprador', value: `<@${userId}>`, inline: true },
-            { name: '🏷️ Username', value: username, inline: true },
-            { name: '🛒 Produto', value: produto, inline: false },
-            { name: '🆔 User ID', value: `\`${userId}\``, inline: false },
-          ],
-          timestamp: new Date().toISOString(),
-          footer: { text: 'Sistema de Vendas' }
-        }]
-      },
-      { headers: { Authorization: `Bot ${BOT_TOKEN}`, 'Content-Type': 'application/json' } }
-    )
+    await enviarEmbed({
+      title: '✅ Venda Aprovada!',
+      color: 0x57F287,
+      fields: [
+        { name: '👤 Comprador', value: `<@${userId}>`, inline: true },
+        { name: '🏷️ Username', value: username, inline: true },
+        { name: '🛒 Produto', value: produto, inline: false },
+        { name: '🆔 User ID', value: `\`${userId}\``, inline: false },
+      ],
+      timestamp: new Date().toISOString(),
+      footer: { text: 'Sistema de Vendas' }
+    })
+
+    res.json({ success: true })
+  } catch (err) {
+    console.error(err.response?.data || err.message)
+    res.status(500).json({ error: 'Erro ao enviar embed' })
+  }
+})
+
+// ==========================================
+// ROTA 3: Chat criado
+// ==========================================
+app.post('/chat-criado', async (req, res) => {
+  const { userId, username } = req.body
+
+  if (!userId || !username) {
+    return res.status(400).json({ error: 'Dados incompletos' })
+  }
+
+  try {
+    await enviarEmbed({
+      title: '💬 Novo Chat Aberto!',
+      color: 0x5865F2,
+      fields: [
+        { name: '👤 Usuário', value: `<@${userId}>`, inline: true },
+        { name: '🏷️ Username', value: username, inline: true },
+        { name: '🆔 User ID', value: `\`${userId}\``, inline: false },
+      ],
+      timestamp: new Date().toISOString(),
+      footer: { text: 'Sistema de Suporte' }
+    })
+
+    res.json({ success: true })
+  } catch (err) {
+    console.error(err.response?.data || err.message)
+    res.status(500).json({ error: 'Erro ao enviar embed' })
+  }
+})
+
+// ==========================================
+// ROTA 4: Chat deletado
+// ==========================================
+app.post('/chat-deletado', async (req, res) => {
+  const { userId, username } = req.body
+
+  if (!userId || !username) {
+    return res.status(400).json({ error: 'Dados incompletos' })
+  }
+
+  try {
+    await enviarEmbed({
+      title: '🗑️ Chat Encerrado!',
+      color: 0xED4245,
+      fields: [
+        { name: '👤 Usuário', value: `<@${userId}>`, inline: true },
+        { name: '🏷️ Username', value: username, inline: true },
+        { name: '🆔 User ID', value: `\`${userId}\``, inline: false },
+      ],
+      timestamp: new Date().toISOString(),
+      footer: { text: 'Sistema de Suporte' }
+    })
 
     res.json({ success: true })
   } catch (err) {
