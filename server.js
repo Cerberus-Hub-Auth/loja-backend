@@ -31,10 +31,15 @@ cloudinary.config({
   api_secret: CLOUDINARY_SECRET
 })
 
-// Cargos por produto
+// Cargos e valores por produto
 const CARGOS = {
   'Source Scripts': '1506395366352879698',
   'Sources Bots': '1506395468555489350'
+}
+
+const VALORES = {
+  'Source Scripts': 'R$10,00',
+  'Sources Bots': 'R$10,00'
 }
 
 // Hora formatada BR
@@ -53,11 +58,16 @@ async function enviarComponente(payload) {
 
 // Dar cargo ao usuário
 async function darCargo(userId, cargoId) {
-  await axios.put(
-    `https://discord.com/api/guilds/${GUILD_ID}/members/${userId}/roles/${cargoId}`,
-    {},
-    { headers: { Authorization: `Bot ${BOT_TOKEN}`, 'Content-Type': 'application/json' } }
-  )
+  try {
+    await axios.put(
+      `https://discord.com/api/guilds/${GUILD_ID}/members/${userId}/roles/${cargoId}`,
+      {},
+      { headers: { Authorization: `Bot ${BOT_TOKEN}`, 'Content-Type': 'application/json' } }
+    )
+    console.log(`✅ Cargo ${cargoId} dado para ${userId}`)
+  } catch (err) {
+    console.error('Erro ao dar cargo:', err.response?.data || err.message)
+  }
 }
 
 // Socket.io
@@ -168,14 +178,16 @@ app.get('/auth/callback', async (req, res) => {
 // ROTA 2: Venda aprovada
 // ==========================================
 app.post('/venda-aprovada', async (req, res) => {
-  const { userId, username, produto, valor } = req.body
+  const { userId, username, produto } = req.body
 
   if (!userId || !username || !produto) {
     return res.status(400).json({ error: 'Dados incompletos' })
   }
 
+  console.log('Produto recebido:', produto)
+  console.log('Cargo encontrado:', CARGOS[produto])
+
   try {
-    // Dar cargo se produto for Source Scripts ou Sources Bots
     const cargoId = CARGOS[produto]
     let cargoTexto = 'Nenhum cargo entregue'
 
@@ -225,11 +237,13 @@ app.post('/venda-aprovada', async (req, res) => {
 // ROTA 3: Chat criado
 // ==========================================
 app.post('/chat-criado', async (req, res) => {
-  const { userId, username, produto, valor } = req.body
+  const { userId, username, produto } = req.body
 
   if (!userId || !username) {
     return res.status(400).json({ error: 'Dados incompletos' })
   }
+
+  const valor = VALORES[produto] || 'Não informado'
 
   try {
     await enviarComponente({
@@ -248,7 +262,7 @@ app.post('/chat-criado', async (req, res) => {
             },
             {
               type: 10,
-              content: `## <:Pessoas:1498405201844113524>・Usuário\n<@${userId}> (${username})\n## <:Carrinho:1498003085136756959>・Produto\n${produto || 'Não informado'}\n## <a:Flyingmoney:1498405926791675914>・Valor\n${valor || 'Não informado'}`
+              content: `## <:Pessoas:1498405201844113524>・Usuário\n<@${userId}> (${username})\n## <:Carrinho:1498003085136756959>・Produto\n${produto || 'Não informado'}\n## <a:Flyingmoney:1498405926791675914>・Valor Pago\n${valor}`
             },
             {
               type: 14
