@@ -31,15 +31,10 @@ cloudinary.config({
   api_secret: CLOUDINARY_SECRET
 })
 
-// Cargos e valores por produto
+// Cargos por produto
 const CARGOS = {
   'Source Scripts': '1506395366352879698',
   'Sources Bots': '1506395468555489350'
-}
-
-const VALORES = {
-  'Source Scripts': 'R$10,00',
-  'Sources Bots': 'R$10,00'
 }
 
 // Hora formatada BR
@@ -185,7 +180,6 @@ app.post('/venda-aprovada', async (req, res) => {
   }
 
   console.log('Produto recebido:', produto)
-  console.log('Cargo encontrado:', CARGOS[produto])
 
   try {
     const cargoId = CARGOS[produto]
@@ -203,24 +197,14 @@ app.post('/venda-aprovada', async (req, res) => {
           type: 17,
           accent_color: 0xFF0000,
           components: [
-            {
-              type: 10,
-              content: '## Nova Venda Aprovada!'
-            },
-            {
-              type: 14
-            },
+            { type: 10, content: '## Nova Venda Aprovada!' },
+            { type: 14 },
             {
               type: 10,
               content: `## <:Pessoas:1498405201844113524>・Usuário\n<@${userId}> (${username})\n## <:Carrinho:1498003085136756959>・Produto\n${produto}\n## <a:gears:1483654818819080362>・Cargo Entregue\n${cargoTexto}`
             },
-            {
-              type: 14
-            },
-            {
-              type: 10,
-              content: `-# Sistema de Avisos | Cerberus Store | ${horaAtual()}`
-            }
+            { type: 14 },
+            { type: 10, content: `-# Sistema de Avisos | Cerberus Store | ${horaAtual()}` }
           ]
         }
       ]
@@ -237,13 +221,11 @@ app.post('/venda-aprovada', async (req, res) => {
 // ROTA 3: Chat criado
 // ==========================================
 app.post('/chat-criado', async (req, res) => {
-  const { userId, username, produto } = req.body
+  const { userId, username, produto, valor } = req.body
 
   if (!userId || !username) {
     return res.status(400).json({ error: 'Dados incompletos' })
   }
-
-  const valor = VALORES[produto] || 'Não informado'
 
   try {
     await enviarComponente({
@@ -253,24 +235,14 @@ app.post('/chat-criado', async (req, res) => {
           type: 17,
           accent_color: 0xFF0000,
           components: [
+            { type: 10, content: '## Novo Carrinho Aberto!' },
+            { type: 14 },
             {
               type: 10,
-              content: '## Novo Carrinho Aberto!'
+              content: `## <:Pessoas:1498405201844113524>・Usuário\n<@${userId}> (${username})\n## <:Carrinho:1498003085136756959>・Produto\n${produto || 'Não informado'}\n## <a:Flyingmoney:1498405926791675914>・Valor Pago\n${valor || 'Não informado'}`
             },
-            {
-              type: 14
-            },
-            {
-              type: 10,
-              content: `## <:Pessoas:1498405201844113524>・Usuário\n<@${userId}> (${username})\n## <:Carrinho:1498003085136756959>・Produto\n${produto || 'Não informado'}\n## <a:Flyingmoney:1498405926791675914>・Valor Pago\n${valor}`
-            },
-            {
-              type: 14
-            },
-            {
-              type: 10,
-              content: `-# Sistema de Avisos | Cerberus Store | ${horaAtual()}`
-            }
+            { type: 14 },
+            { type: 10, content: `-# Sistema de Avisos | Cerberus Store | ${horaAtual()}` }
           ]
         }
       ]
@@ -301,24 +273,14 @@ app.post('/chat-deletado', async (req, res) => {
           type: 17,
           accent_color: 0xFF0000,
           components: [
-            {
-              type: 10,
-              content: '## Carrinho Fechado!'
-            },
-            {
-              type: 14
-            },
+            { type: 10, content: '## Carrinho Fechado!' },
+            { type: 14 },
             {
               type: 10,
               content: `## <:Pessoas:1498405201844113524>・Usuário\n<@${userId}> (${username})\n## <:Carrinho:1498003085136756959>・Produto\n${produto || 'Não informado'}`
             },
-            {
-              type: 14
-            },
-            {
-              type: 10,
-              content: `-# Sistema de Avisos | Cerberus Store | ${horaAtual()}`
-            }
+            { type: 14 },
+            { type: 10, content: `-# Sistema de Avisos | Cerberus Store | ${horaAtual()}` }
           ]
         }
       ]
