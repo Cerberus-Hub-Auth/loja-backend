@@ -33,7 +33,7 @@ cloudinary.config({
 
 // Cargos por produto
 const CARGOS = {
-  'Source Scripts': '1506395366352879698',
+  'Sources Scripts': '1506395366352879698',
   'Sources Bots': '1506395468555489350'
 }
 
