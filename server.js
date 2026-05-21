@@ -293,4 +293,4 @@ app.post('/chat-deletado', async (req, res) => {
   }
 })
 
-server.listen(3000, () => console.log('✅ Backend rodando na porta 3000'))
+server.listen(process.env.PORT || 80, '0.0.0.0', () => console.log('✅ Backend rodando!'))
