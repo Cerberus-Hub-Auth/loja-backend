@@ -198,7 +198,7 @@ app.post('/chat-criado', async (req, res) => {
         components: [
           { type: 10, content: '## Novo Carrinho Aberto!' },
           { type: 14 },
-          { type: 10, content: `## <:Pessoas:1498405201844113524>・Usuário\n<@${userId}> (${username})\n## <:Carrinho:1498003085136756959>・Produto\n${produto || 'Não informado'}\n## <a:Flyingmoney:1498405926791675914>・Valor Pago\n${valor || 'Não informado'}` },
+          { type: 10, content: `## <:Pessoas:1498405201844113524>・Usuário\n<@${userId}> (${username})\n## <:Carrinho:1498003085136756959>・Produto\n${produto || 'Não informado'}\n## <a:Flyingmoney:1498405926791675914>・Valor\n${valor || 'Não informado'}` },
           { type: 14 },
           { type: 10, content: `-# Sistema de Avisos | Cerberus Store | ${horaAtual()}` }
         ]
