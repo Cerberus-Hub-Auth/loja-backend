@@ -246,7 +246,7 @@ app.post('/notificar-comprador', async (req, res) => {
   const { userId, ownerId, chatId } = req.body
   if (!userId || !ownerId || !chatId) return res.status(400).json({ error: 'Dados incompletos' })
 
-  const chatLink = `https://cerberusstore.squareweb.app/chat/${chatId}`
+  const chatLink = chatId  // já vem com URL completa do frontend
 
   try {
     await enviarDM(userId, {
@@ -277,7 +277,7 @@ app.post('/notificar-comprador', async (req, res) => {
 // ROTA 6: Notificar Donos (comprador chama)
 // ==========================================
 app.post('/notificar-donos', async (req, res) => {
-  const { userId } = req.body
+  const { userId, chatId } = req.body
   if (!userId) return res.status(400).json({ error: 'Dados incompletos' })
 
   const payload = {
@@ -287,7 +287,7 @@ app.post('/notificar-donos', async (req, res) => {
       components: [
         { type: 10, content: '## Notificação' },
         { type: 14, divider: true, spacing: 1 },
-        { type: 10, content: `### O usuário <@${userId}> está te chamando no chat / carrinho! Atenda ele!` },
+        { type: 10, content: `### O usuário <@${userId}> está te chamando no chat / carrinho! Atenda ele! ([Ticket](${chatId}))` },
         { type: 14, divider: true, spacing: 1 },
         { type: 10, content: `-# Sistema de Notificações | Cerberus Store | ${horaAtual()}` }
       ]
@@ -305,4 +305,4 @@ app.post('/notificar-donos', async (req, res) => {
   }
 })
 
-server.listen(process.env.PORT || 80, '0.0.0.0', () => console.log('✅ Backend rodando caraiokkk'))
+server.listen(process.env.PORT || 80, '0.0.0.0', () => console.log('✅ Backend rodando!'))
