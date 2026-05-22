@@ -256,10 +256,10 @@ app.post('/notificar-comprador', async (req, res) => {
         components: [
           { type: 10, content: '## Notificação / Notification' },
           { type: 14, divider: true, spacing: 1 },
-          { type: 10, content: `### <@${userId}>, O dono <@${ownerId}> está te chamando em seu ticket [Ticket](${chatLink})` },
+          { type: 10, content: `### <@${userId}>, O dono <@${ownerId}> está te chamando no chat / carrinho! Atenda ele!` },
           { type: 10, content: '-# Se você abriu um ticket atoa, pode resultar uma punição!' },
           { type: 14, divider: true, spacing: 1 },
-          { type: 10, content: `### <@${userId}>, The owner <@${ownerId}> is contacting you via your ticket [Ticket](${chatLink})` },
+          { type: 10, content: `### <@${userId}>, The owner <@${ownerId}> is contacting you via your ticket!` },
           { type: 10, content: '-# If you opened a ticket unnecessarily, it could result in a penalty!' },
           { type: 14, divider: true, spacing: 1 },
           { type: 10, content: `-# Sistema de Notificações | Cerberus Store | ${horaAtual()}` }
@@ -287,7 +287,7 @@ app.post('/notificar-donos', async (req, res) => {
       components: [
         { type: 10, content: '## Notificação' },
         { type: 14, divider: true, spacing: 1 },
-        { type: 10, content: `### O usuário <@${userId}> está te chamando no chat / carrinho! Atenda ele! [Ticket](${chatId})` },
+        { type: 10, content: `### O usuário <@${userId}> está te chamando no chat / carrinho! Atenda ele!` },
         { type: 14, divider: true, spacing: 1 },
         { type: 10, content: `-# Sistema de Notificações | Cerberus Store | ${horaAtual()}` }
       ]
@@ -305,4 +305,4 @@ app.post('/notificar-donos', async (req, res) => {
   }
 })
 
-server.listen(process.env.PORT || 80, '0.0.0.0', () => console.log('backiendi ta funcionando garaiokkkkk'))
+server.listen(process.env.PORT || 80, '0.0.0.0', () => console.log('✅ Backend rodando!'))
